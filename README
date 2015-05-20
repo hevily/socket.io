@@ -1,0 +1,206 @@
+ 参考资料：
+
+Node.js API 文档：https://nodejs.org/api/
+Socket 官网：http://socket.io/
+socket.io 入门整理：https://cnodejs.org/topic/50a1fcc7637ffa4155b5a264
+socket.io 使用入门：http://deadhorse.me/nodejs/2011/12/29/socket.io_induction.html
+Socket.io 在线聊天室：http://blog.fens.me/nodejs-socketio-chat/
+
+
+        Socket.IO 基于Node.js 架构体系，包含了服务端和客户端的库，封装了 WebSocket，同时包含了其它的连接方式，比如 Ajax，可在任何浏览器里使用 Socket.IO 建立异步连接。Socket.IO 实现了实时双向的基于事件的通讯机制，旨在让各种浏览器与移动设备上实现实时app功能，模糊化各种传输机制。
+        服务器端和客户端通信设计可参阅下图：
+        下面我们使用 Node.js 和 Socket.IO 来做一个简单的聊天室吧。
+
+一.配置环境
+
+        1. 安装 Node.js（自己谷歌去→_→……）
+        2. 打开终端（初学者建议使用 git bash，花花绿绿的比较好看嘛→_→……）,新建一个 socketio 文件夹，进入此文件夹，使用 npm 初始化项目：
+
+$ npm init
+
+         然后输入项目相关信息，完成后，socketio 文件夹下创建好一个 package.json 文件。这个文件用于描述项目相关信息，以及声明项目中所使用的模块。
+        然后安装 Socket.IO ：
+
+$ npm install socket.io --save
+
+         安装 Socket.IO 时，--save参数用于保存模块依赖信息到 package.json 文件中。另外，不建议以全局模式安装模块，建议本地模式（主要考虑到项目的易移植性）。
+        打开 package.json 文件中会多了一项内容：
+
+"dependencies": {
+    "socket.io": "^1.3.5"
+}
+
+        同时，Socket.IO 安装在了 node_modules 文件夹下。
+       （备注：自己去了解 package.json →_→……，此处不详细解释~）
+
+二. 创建http server
+
+        首先，在文件夹 socketio 中新建 index.js 文件。这就是在服务器端运行的主文件。
+        在 index.js 中加入如下代码，引入所需的模块：
+
+var http = require('http');           // 引用http 模块，用于创建http server
+var socketio = require('socket.io');  // 引用socket.io 模块，用于双向服务器与客户端的通讯
+var fs = require('fs');               // 引用fs 模块，用于读取文件
+
+        然后通过 http 模块新建 app ，在 index.js 文件中添加以下代码：
+
+var app = http.createServer(function(req, res) {
+    // fs.readFile(filename[, options], callback)方法用于读取文件
+    // 此处读取的是index.html文件，即我们后面要编写的页面文件
+    fs.readFile( "index.html", function (err, data) {
+        if (err) {
+            res.writeHead(500);
+            return res.end('Error loading index.html');
+        }
+        res.writeHead(200); // 返回请求状态码
+        res.write(data);    // 返回读取到的内容给浏览器
+        res.end();
+    });
+}).listen(8080); // listen()方法用监听http server到指定的地址和端口，默认地址是localhost，这里使用的是8080端口
+        在 socketio 文件夹中新建 index.html 文件，代码如下：
+
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Socket.IO</title>
+    </head>
+    <body>
+        I'm Little Dengzi.
+    </body>
+</html>
+
+         在 socketio 文件夹下运行 index.js 程序：
+
+$ node index.js
+
+         然后打开浏览器，访问 http://127.0.0.1:8080 。出现  “I'm Little Dengzi.”  时，说明创建的 http server 成功了。
+
+三. 实现聊天功能
+
+       首先，创建 Socket.IO 对象：
+
+
+// 在与app相同的地址和端口上创建Socket.IO服务
+var io = socketio(app);
+
+// 监听connection事件
+// 当浏览器连接到此Socket.IO服务时触发该事件
+io.on('connection', function (socket) {
+    // 监听来自浏览器端的chat事件。后面我们会在index.html中实现此事件
+    socket.on('chat', function (data) {
+        //在终端输出从浏览器端接收到的数据
+        console.log(data);
+    });
+});
+
+         下面来修改一下我们的聊天界面，修改 index.html 文件中的代码如下：（不要吐槽我渣渣的设计和排版啦→_→~）
+
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Socket.IO chat</title>
+        <style>
+            * { margin: 0; padding: 0;}
+            body { font: 13px Helvetica, Arial; }
+            #form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+            #form input { padding: 10px; border: 0; width: 85%; margin-right: .5%;}
+            #form button { width: 9%; background: white; border: none; padding: 10px; }
+            #messages { list-style-type: none;}
+            #messages li { padding: 10px; min-width: 300px; min-height: 14px;}
+            #messages li:nth-child(odd) { background: #000; color: #fff;}
+            #messages li:nth-child(even) { background: #fff; color: #000;}
+        </style>
+        <!-- 引入Socket.IO库和jQuery库 -->
+        <script src="http://labfile.oss.aliyuncs.com/socketio/socket.io-1.2.1.js"></script>
+        <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    </head>
+    <body>
+        <!-- 显示消息记录 -->
+        <ul id="messages"></ul>
+
+        <!-- 消息发送框 -->
+        <div id="form">
+            <input id="m" autocomplete="off" />
+            <button id="send" >Send</button>
+        </div>
+    </body>
+</html>
+
+         在这里引入了 Socket.IO 库，是为了在浏览器里使用 Socket.IO 建立异步连接，进行实时双向的基于事件的通讯机制。
+
+       在浏览器端创建 chat 事件，在 index.html 文件中添加如下JavaScript代码：
+
+<script>
+	// 连接到Socket.IO服务器
+	var socket = io.connect();
+
+	$(function() {
+	    // 绑定"send"按钮发送消息的事件
+	    $('#send').on('click', function() {
+	    	var data = $('#m').val();
+
+	        // 创建chat事件并发送消息给服务器
+	        // emit('event') 表示发送了一个event命令
+	        // 使用io.on('event')接收对应事件的信息
+	        // 所以客户端服务器端需要使用socket.on('chat')接收聊天信息
+	        socket.emit('chat', { msg: data });
+	        $('#m').val('');
+	    });
+
+	     // 接收消息并显示到消息记录框中
+	     socket.on('sendmsg', function(msg) {
+	     	$('#messages').append($('<li>').text(msg.msg));
+	     });
+	 });
+</script>
+
+          现在，使用浏览器访问 http://127.0.0.1:8080 ，通过聊天框发送消息，会看到服务器端输出相应的消息内容。
+
+
+四. 实现双向通讯
+
+        下面，我们来实现一下把用户发送的消息发送给所有的客户端，并在 <ul id="messages"></ul> 中实时生成响应内容。
+
+        在 index.js 文件中创建 sendmsg 事件，代码如下：
+
+io.on('connection', function (socket) {
+    socket.on('chat', function (data) {
+        console.log(data);
+
+        // 创建sendmsg事件并把发送聊天消息给客户端
+        io.emit('sendmsg', data);
+    });
+});
+
+          客户端接收并显示消息，在 index.html 中添加 JavaScript 代码如下：
+$(function() {
+    // ... ...
+
+    // 接收消息并显示到消息记录框中
+    socket.on('sendmsg', function(msg) {
+    $('#messages').append($('<li>').text(msg.msg));
+    });
+});
+        再重新运行一下项目：
+
+$ node index.js
+
+         现在用多个浏览器（Chrome、FireFox、IE 一起上啦→_→……）打开多个页面，就可以看到别人发送的实时消息。这样一个简单的实时聊天室就初步实现啦。
+
+
+        此项目主要用到的是 Socket.IO 的 emit() 和 on() 方法。其中，emit() 方法用于创建和触发事件，on() 方法用于监听事件。
+
+下载后，在终端输入
+$ npm install
+然后，再输入
+$ node index.js
+，最后就可以在http://127.0.0.1:8080下愉快地玩耍了→_→……)
+
+
+by the way : 
+
+        本聊天室功能过于简单，你也可以自己扩展这个项目，做一个功能更加完整的聊天室。
+
+        学习 Node.js ，不建议看中文文档（里面有不少错译、漏译、API 缺失的……，主要是目前阶段在天朝 Node.js 还未够成熟）。建议看英文官方 API 文档：https://nodejs.org/api/。
