@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Socket.IO chat</title>
+        <style>
+            * { margin: 0; padding: 0;}
+            body { font: 13px Helvetica, Arial; }
+            #form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+            #form input { padding: 10px; border: 0; width: 85%; margin-right: .5%;}
+            #form button { width: 9%; background: white; border: none; padding: 10px; }
+            #messages { list-style-type: none;}
+            #messages li { padding: 10px; min-width: 300px; min-height: 14px;}
+            #messages li:nth-child(odd) { background: #000; color: #fff;}
+            #messages li:nth-child(even) { background: #fff; color: #000;}
+        </style>
+        <!-- 引入socket.io库和jQuery库 -->
+        <script src="http://labfile.oss.aliyuncs.com/socketio/socket.io-1.2.1.js"></script>
+        <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    </head>
+    <body>
+        <!-- 显示消息记录 -->
+        <ul id="messages"></ul>
+
+        <!-- 消息发送框 -->
+        <div id="form">
+            <input id="m" autocomplete="off" />
+            <button id="send" >Send</button>
+        </div>
+    </body>
+<script>
+	// 连接到Socket.IO服务器
+	var socket = io.connect();
+
+	$(function() {
+	    // 绑定"send"按钮发送消息的事件
+	    $('#send').on('click', function() {
+	    	var data = $('#m').val();
+
+	        // 创建chat事件并发送消息给服务器
+	        // emit('event') 表示发送了一个event命令
+	        // 使用io.on('event')接收对应事件的信息
+	        // 所以客户端服务器端需要使用socket.on('chat')接收聊天信息
+	        socket.emit('chat', { msg: data });
+	        $('#m').val('');
+	    });
+
+	     // 接收消息并显示到消息记录框中
+	     socket.on('sendmsg', function(msg) {
+	     	$('#messages').append($('<li>').text(msg.msg));
+	     });
+	 });
+</script>
+</html>
